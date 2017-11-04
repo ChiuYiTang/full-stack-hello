@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -22,6 +23,8 @@ typedef enum {
     "code\n"                                                                \
     "       -x Load <in_file> and execute it\n"                             \
     "\n"                                                                    \
+    "       --input Set #0 as input value for Fibonacci number"             \
+    "\n"                                                                    \
     "       <in_file> the file name to be used by commands above"
 
 int main(int argc, char **argv)
@@ -32,7 +35,8 @@ int main(int argc, char **argv)
     int ignore_option = 0;
     int out_fd = -1;
     int in_fd = -1;
-
+    int vm_init_var = 0;
+    int vm_pos = 0;
     for (int i = 1; i < argc; i++) {
         if (ignore_option)
             in_file = argv[i];
@@ -54,6 +58,10 @@ int main(int argc, char **argv)
             if (req == ASSEMBLE_AND_WRITE_ELF)
                 FATAL(-1, "-w and -x used together, see -h\n");
             req = LOAD_ELF_AND_EVAL;
+        } else if (!strcmp(argv[i], "--input")) {
+            if (!argv[i + 1])
+                FATAL(-1, "Missing an integer as --input argument, see -h\n");
+            vm_init_var = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "-")) {
             if (in_file)
                 FATAL(-1, "more than one input file, see -h\n");
@@ -105,6 +113,7 @@ int main(int argc, char **argv)
     case ASSEMBLE_AND_EVAL: {
         vm_env *env = vm_new();
         assemble_from_fd(env, in_fd);
+        vm_set_var(env, vm_pos, vm_init_var);
         hook_opcodes(env);
         vm_run(env);
         vm_free(env);
@@ -115,6 +124,7 @@ int main(int argc, char **argv)
 
         vm_env *env = vm_new();
         assemble_from_fd(env, in_fd);
+        vm_set_var(env, vm_pos, vm_init_var);
         len = write_to_elf(env, out_fd);
         vm_free(env);
         if (len < 0)
@@ -124,6 +134,7 @@ int main(int argc, char **argv)
     }
     case LOAD_ELF_AND_EVAL: {
         vm_env *env = vm_new();
+        vm_set_var(env, vm_pos, vm_init_var);
         load_from_elf(env, in_fd);
         hook_opcodes(env);
         vm_run(env);

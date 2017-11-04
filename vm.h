@@ -49,4 +49,5 @@ void vm_hook_opcode_handler(vm_env *, int, vm_handler);
 
 void vm_run(vm_env *env);
 
+void vm_set_var(vm_env *env, int pos, int n);
 #endif /* VM_H */
